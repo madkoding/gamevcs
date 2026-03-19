@@ -35,28 +35,12 @@ jobs:
           pip install pyinstaller
 
       - name: Build client
-        if: matrix.name != 'windows'
         run: |
           pyinstaller client.spec --clean --noconfirm
-        shell: bash
-
-      - name: Build client (Windows)
-        if: matrix.name == 'windows'
-        run: |
-          pyinstaller client.spec --clean --noconfirm
-        shell: cmd
 
       - name: Build server
-        if: matrix.name != 'windows'
         run: |
           pyinstaller server.spec --clean --noconfirm
-        shell: bash
-
-      - name: Build server (Windows)
-        if: matrix.name == 'windows'
-        run: |
-          pyinstaller server.spec --clean --noconfirm
-        shell: cmd
 
       - name: Create archives (Linux/Mac)
         if: matrix.name != 'windows'
@@ -64,7 +48,6 @@ jobs:
           cd dist
           tar -czvf gamevcs-client-${{ matrix.name }}-x64.tar.gz gamevcs/
           tar -czvf gamevcs-server-${{ matrix.name }}-x64.tar.gz gamevcs-server/
-        shell: bash
 
       - name: Create archives (Windows)
         if: matrix.name == 'windows'
@@ -72,15 +55,16 @@ jobs:
           cd dist
           powershell -Command "Compress-Archive -Path 'gamevcs\*' -DestinationPath 'gamevcs-client-windows-x64.zip'"
           powershell -Command "Compress-Archive -Path 'gamevcs-server\*' -DestinationPath 'gamevcs-server-windows-x64.zip'"
-        shell: cmd
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
         with:
-          name: gamevcs-${{ matrix.name }}-x64
-          path: |
+          files: |
             dist/gamevcs-client-${{ matrix.name }}-x64.tar.gz
             dist/gamevcs-server-${{ matrix.name }}-x64.tar.gz
             dist/gamevcs-client-windows-x64.zip
             dist/gamevcs-server-windows-x64.zip
-          retention-days: 5
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
