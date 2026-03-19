@@ -1,0 +1,86 @@
+name: Build Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+          - os: macos-latest
+            name: macos
+          - os: windows-latest
+            name: windows
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install pyinstaller
+
+      - name: Build client
+        if: matrix.name != 'windows'
+        run: |
+          pyinstaller client.spec --clean --noconfirm
+        shell: bash
+
+      - name: Build client (Windows)
+        if: matrix.name == 'windows'
+        run: |
+          pyinstaller client.spec --clean --noconfirm
+        shell: cmd
+
+      - name: Build server
+        if: matrix.name != 'windows'
+        run: |
+          pyinstaller server.spec --clean --noconfirm
+        shell: bash
+
+      - name: Build server (Windows)
+        if: matrix.name == 'windows'
+        run: |
+          pyinstaller server.spec --clean --noconfirm
+        shell: cmd
+
+      - name: Create archives (Linux/Mac)
+        if: matrix.name != 'windows'
+        run: |
+          cd dist
+          tar -czvf gamevcs-client-${{ matrix.name }}-x64.tar.gz gamevcs/
+          tar -czvf gamevcs-server-${{ matrix.name }}-x64.tar.gz gamevcs-server/
+        shell: bash
+
+      - name: Create archives (Windows)
+        if: matrix.name == 'windows'
+        run: |
+          cd dist
+          powershell -Command "Compress-Archive -Path 'gamevcs\*' -DestinationPath 'gamevcs-client-windows-x64.zip'"
+          powershell -Command "Compress-Archive -Path 'gamevcs-server\*' -DestinationPath 'gamevcs-server-windows-x64.zip'"
+        shell: cmd
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamevcs-${{ matrix.name }}-x64
+          path: |
+            dist/gamevcs-client-${{ matrix.name }}-x64.tar.gz
+            dist/gamevcs-server-${{ matrix.name }}-x64.tar.gz
+            dist/gamevcs-client-windows-x64.zip
+            dist/gamevcs-server-windows-x64.zip
+          retention-days: 5
